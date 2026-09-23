@@ -20,6 +20,7 @@ namespace bai_4._2
 
         private void InitializeFormData()
         {
+            mtxtPhone.Mask = "(000) 000-0000";
 
             // Birth date format
             dtpBirthDate.Format = DateTimePickerFormat.Custom;
