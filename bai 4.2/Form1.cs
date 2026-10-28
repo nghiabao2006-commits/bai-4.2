@@ -12,67 +12,107 @@ namespace bai_4._2
 {
     public partial class Form1 : Form
     {
+        private DataGridView dgvStudents;
+
         public Form1()
         {
             InitializeComponent();
-            InitializeFormData();
+
+            try
+            {
+                Database.Init();       
+                InitializeFormData();  
+                BuildGrid();            
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không kết nối được CSDL:\n" + ex.Message,
+                    "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void InitializeFormData()
         {
             mtxtPhone.Mask = "(000) 000-0000";
 
-            // Birth date format
             dtpBirthDate.Format = DateTimePickerFormat.Custom;
             dtpBirthDate.CustomFormat = "dd/MM/yyyy";
 
-            // Populate courses (DisplayMember, ValueMember)
-            var courses = new List<Course>
-            {
-                new Course { Id = 1, Name = "C# Beginner" },
-                new Course { Id = 2, Name = "Windows Forms" },
-                new Course { Id = 3, Name = "ASP.NET MVC" },
-                new Course { Id = 4, Name = "Data Structures" }
-            };
-
-            cboCourse.DataSource = courses;
+            cboCourse.DataSource = StudentRepository.GetCourses();
             cboCourse.DisplayMember = "Name";
             cboCourse.ValueMember = "Id";
 
-            // Default selections
             rdoMale.Checked = true;
             if (cboCourse.Items.Count > 0) cboCourse.SelectedIndex = 0;
+        }
+
+        private void BuildGrid()
+        {
+            this.ClientSize = new Size(680, 560);   
+
+            dgvStudents = new DataGridView
+            {
+                Location = new Point(27, 320),
+                Size = new Size(626, 210),
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            };
+            this.Controls.Add(dgvStudents);
+
+            LoadStudents();
+        }
+
+        private void LoadStudents()
+        {
+            dgvStudents.DataSource = StudentRepository.GetAll();
         }
 
         private void btnRegister_Click(object sender, EventArgs e)
         {
             var name = txtName.Text.Trim();
-            var phone = mtxtPhone.Text;
-            var birth = dtpBirthDate.Value.ToString("dd/MM/yyyy");
-            var courseName = (cboCourse.SelectedItem as Course)?.Name ?? string.Empty;
-            var courseId = cboCourse.SelectedValue != null ? cboCourse.SelectedValue.ToString() : string.Empty;
-            var gender = rdoMale.Checked ? "Male" : rdoFemale.Checked ? "Female" : "Other";
-            var extras = new List<string>();
-            if (chkNewsletter.Checked) extras.Add("Newsletter");
-            if (chkMaterials.Checked) extras.Add("Materials");
 
-            var info = new StringBuilder();
-            info.AppendLine("Registration info:");
-            info.AppendLine($"Name: {name}");
-            info.AppendLine($"Phone: {phone}");
-            info.AppendLine($"Birth date: {birth}");
-            info.AppendLine($"Course: {courseName} (Id: {courseId})");
-            info.AppendLine($"Gender: {gender}");
-            info.AppendLine($"Extras: {(extras.Count > 0 ? string.Join(", ", extras) : "None")} ");
+            if (name.Length == 0)
+            {
+                MessageBox.Show("Vui lòng nhập tên.", "Thiếu thông tin",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtName.Focus();
+                return;
+            }
 
-            MessageBox.Show(info.ToString(), "Đăng ký", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
+            if (!mtxtPhone.MaskCompleted)
+            {
+                MessageBox.Show("Vui lòng nhập đủ số điện thoại.", "Thiếu thông tin",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                mtxtPhone.Focus();
+                return;
+            }
 
-        private class Course
-        {
-            public int Id { get; set; }
-            public string Name { get; set; }
-            public override string ToString() => Name;
+            var gender = rdoMale.Checked ? "Male" : "Female";
+            int courseId = (int)cboCourse.SelectedValue;
+
+            try
+            {
+                StudentRepository.Add(name, mtxtPhone.Text, dtpBirthDate.Value, courseId,
+                                      gender, chkNewsletter.Checked, chkMaterials.Checked);
+
+                LoadStudents();
+
+                MessageBox.Show("Đã lưu học viên: " + name, "Đăng ký",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                txtName.Clear();
+                mtxtPhone.Clear();
+                chkNewsletter.Checked = false;
+                chkMaterials.Checked = false;
+                txtName.Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lưu thất bại:\n" + ex.Message, "Lỗi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void txtName_TextChanged(object sender, EventArgs e)
